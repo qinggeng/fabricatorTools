@@ -1,4 +1,2 @@
-fab.pyc
-user.pyc
-transaction.pyc
+*.pyc
 settings.py

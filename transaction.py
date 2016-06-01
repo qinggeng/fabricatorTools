@@ -19,7 +19,7 @@ class ObjectTransactionsGetterBuilder(object):
         objType = objInfo['type']
         if objType in self.getters:
             return self.getters[objType](fab, objPHID)
-        return None
+        raise Exception("unknown object type: %s" % objType)
 
 def transactionGetter(objectType):
     def transactionGetter_decorator(func):
@@ -29,6 +29,11 @@ def transactionGetter(objectType):
     return transactionGetter_decorator
 
 @transactionGetter("TASK")
+def getTaskTransactionsByTaskPHID(fab, objectID):
+    task = getTaskInfo(fab, objectID)
+    task_id = task['id']
+    return getTaskTransactions(fab, task_id)[0]
+@transactionGetter("MOCK")
 def getTaskTransactionsByTaskPHID(fab, objectID):
     task = getTaskInfo(fab, objectID)
     task_id = task['id']
@@ -45,19 +50,23 @@ kTransactionTypeViewPolicy = 'core:view-policy'
 kTransactionTypeCreate = 'core:create'
 kTransactionTypeUnblock = 'unblock'
 kTransactionTypeComment = 'core:comment'
+kTransactionTypeDescription = 'description'
 kTransactionTypeEdge = 'core:edge'
 kTransactionTypePriority = 'priority'
+kTransactionTypeMergedFrom = 'mergedfrom'
+kTransactionTypeMergedInto = 'mergedinto'
+kTransactionTypeTitle = 'title'
 
-class TransactionDescriber(object):
+class TransactionFormatter(object):
     __metaclass__ = Singleton
     def __init__(self):
         self.describers = {}
         pass
-    def addDescriber(self, transactionType, destType, describer):
+    def addFormatter(self, transactionType, destType, describer):
         key = transactionType + "=>" + destType
         self.describers[key] = describer
 
-    def describe(self, fab, transaction, destType = 'text'):
+    def format(self, fab, transaction, destType = 'text'):
         key = transaction['transactionType'] + '=>' + destType
         if key in self.describers:
             return self.describers[key](fab, transaction)
@@ -65,20 +74,20 @@ class TransactionDescriber(object):
         ppr(transaction)
         raise Exception("undescribale transaction, type=" + transaction['transactionType'])
 
-def transactionDescriber(transactionType, destType):
-    def transactionDescriberRegister(func):
-        describer = TransactionDescriber()
-        describer.addDescriber(transactionType, destType, func)
-    return transactionDescriberRegister
+def transactionFormatter(transactionType, destType):
+    def transactionFormatterRegister(func):
+        describer = TransactionFormatter()
+        describer.addFormatter(transactionType, destType, func)
+    return transactionFormatterRegister
 
-@transactionDescriber(kTransactionTypeStatus, "text")
-def describeStausTransactionToText(fab, transaction):
+@transactionFormatter(kTransactionTypeStatus, "text")
+def formatStausTransactionToText(fab, transaction):
     oldVal = transaction['oldValue']
     newVal = transaction['newValue']
     return u"状态变更：" + oldVal + " => " + newVal
 
-@transactionDescriber(kTransactionTypeSubscribe, "text")
-def descriptSubscribeTransactionToText(fab, transaction):
+@transactionFormatter(kTransactionTypeSubscribe, "text")
+def formatSubscribeTransactionToText(fab, transaction):
     oldVal = transaction['oldValue']
     newVal = transaction['newValue']
     oldVal = UserInfo().getUsersRealName(oldVal)
@@ -89,50 +98,76 @@ def descriptSubscribeTransactionToText(fab, transaction):
         newVal = reduce(lambda x, y: x + u' ' + y, newVal, u"")
     return u"cc：" + oldVal + u" => " + newVal
 
-@transactionDescriber(kTransactionTypeReassign, "text")
-def descriptReassignTransactionToText(fab, transaction):
+@transactionFormatter(kTransactionTypeReassign, "text")
+def formatReassignTransactionToText(fab, transaction):
     oldVal = transaction['oldValue']
     newVal = transaction['newValue']
-    oldVal = UserInfo().getUsersRealName([oldVal])
-    newVal = UserInfo().getUsersRealName([newVal])
+    if oldVal != None:
+        oldVal = UserInfo().getUsersRealName([oldVal])
+    else:
+        oldVal = u''
+    if newVal != None:
+        newVal = UserInfo().getUsersRealName([newVal])
+    else:
+        newVal = u''
     if type(oldVal) == list:
         oldVal = reduce(lambda x, y: x + ' ' + y, oldVal, u"")
     if type(newVal) == list:
         newVal = reduce(lambda x, y: x + ' ' + y, newVal, u"")
     return u"任务分配：" + oldVal + u" => " + newVal
 
-@transactionDescriber(kTransactionTypeEditPolicy, "text")
-def dscribeEditPolicyTransactionToText(fab, transaction):
+@transactionFormatter(kTransactionTypeEditPolicy, "text")
+def formatEditPolicyTransactionToText(fab, transaction):
     oldVal = transaction['oldValue']
     newVal = transaction['newValue']
     return u"修改编辑策略：" + unicode(oldVal) + " => " + newVal
 
-@transactionDescriber(kTransactionTypeViewPolicy, "text")
-def dscribeViewPolicyTransactionToText(fab, transaction):
+@transactionFormatter(kTransactionTypeViewPolicy, "text")
+def formatViewPolicyTransactionToText(fab, transaction):
     oldVal = transaction['oldValue']
     newVal = transaction['newValue']
     return u"修改查看策略：" + unicode(oldVal) + " => " + newVal
 
-@transactionDescriber(kTransactionTypeCreate, "text")
-def dscribeCreateTransactionToText(fab, transaction):
+@transactionFormatter(kTransactionTypeCreate, "text")
+def formatCreateTransactionToText(fab, transaction):
     return u"创建对象：" + transaction['transactionPHID']
 
-@transactionDescriber(kTransactionTypeUnblock, "text")
-def dscribeCreateTransactionToText(fab, transaction):
+@transactionFormatter(kTransactionTypeUnblock, "text")
+def formatCreateTransactionToText(fab, transaction):
     return u"编辑任务的依赖项：" + transaction['taskID']
 
-@transactionDescriber(kTransactionTypeComment, "text")
-def dscribeCreateTransactionToText(fab, transaction):
+@transactionFormatter(kTransactionTypeComment, "text")
+def formatCreateTransactionToText(fab, transaction):
     return u"发表评论：" + transaction['comments'].split('\n')[0]
 
-@transactionDescriber(kTransactionTypePriority, "text")
-def dscribePriorityTransactionToText(fab, transaction):
+@transactionFormatter(kTransactionTypePriority, "text")
+def formatPriorityTransactionToText(fab, transaction):
     oldVal = transaction['oldValue']
     newVal = transaction['newValue']
     return u"修改优先级：" + unicode(oldVal) + " => " + unicode(newVal)
 
-@transactionDescriber(kTransactionTypeEdge, "text")
-def dscribeEdgeTransactionToText(fab, transaction):
+@transactionFormatter(kTransactionTypeEdge, "text")
+def formatEdgeTransactionToText(fab, transaction):
     oldVal = transaction['oldValue']
     newVal = transaction['newValue']
     return u"修改所属项目：" + unicode(oldVal) + " => " + unicode(newVal)
+
+@transactionFormatter(kTransactionTypeMergedFrom, "text")
+def formatMergedFromTransactionToText(fab, transaction):
+    newVal = transaction['newValue']
+    return u"合并T%s" % newVal.keys()[0]
+
+@transactionFormatter(kTransactionTypeMergedInto, "text")
+def formatMergedIntoTransactionToText(fab, transaction):
+    newVal = transaction['newValue']
+    return u"将TASK合并到 %s" % newVal
+
+@transactionFormatter(kTransactionTypeDescription, "text")
+def formatCreateTransactionToText(fab, transaction):
+    return u"修改任务描述：" + transaction['newValue'].split('\n')[0]
+
+@transactionFormatter(kTransactionTypeTitle, "text")
+def formatCreateTransactionToText(fab, transaction):
+    oldVal = transaction['oldValue']
+    newVal = transaction['newValue']
+    return u"修改任务描述：%s => %s" % (oldVal, newVal) 
