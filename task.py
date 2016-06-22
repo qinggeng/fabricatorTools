@@ -2,6 +2,7 @@
 from fab import getFab
 from user import UserInfo
 from datetime import datetime
+import settings
 class TaskInfoFactory(object):
     def __init__(self, **kwargs):
         fab = kwargs.pop('fab', getFab())
@@ -30,7 +31,7 @@ class TaskInfoFactory(object):
     def deadline(self, tid):
         t = self.info(tid)
         aux = t["auxiliary"]
-        deadline = aux["std:maniphest:bestrun:deadline"]
+        deadline = aux["std:maniphest:" + settings.CUSTOM_FIELD_KEYS['deadline']]
         if None == deadline:
             return u"TBD"
         return datetime.fromtimestamp(deadline).strftime("%Y年%m月%d日 %H:%M").decode('utf-8')
@@ -38,13 +39,13 @@ class TaskInfoFactory(object):
     def deadlineTimestemp(self, tid):
         t = self.info(tid)
         aux = t["auxiliary"]
-        deadline = aux["std:maniphest:bestrun:deadline"]
+        deadline = aux["std:maniphest:" + settings.CUSTOM_FIELD_KEYS['deadline']]
         return float(deadline)
 
     def kickoffDate(self, tid):
         t = self.info(tid)
         aux = t["auxiliary"]
-        kickoff = aux["std:maniphest:bestrun:plan:kickoff"]
+        kickoff = aux["std:maniphest:" + settings.CUSTOM_FIELD_KEYS['plans-to-kickoff']]
         return datetime.fromtimestamp(kickoff)
 
     def points(self, tid):

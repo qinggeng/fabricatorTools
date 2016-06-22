@@ -6,7 +6,7 @@ from pprint import pprint as ppr
 from user import CacheUsers
 from printers import Banner
 from task import TaskInfoFactory
-#import sys
+import sys, argparse
 #import codecs
 #sys.stdout = codecs.getwriter('utf8')(sys.stdout)
 
@@ -78,7 +78,18 @@ class DailyReportFactory(object):
         pass
 
 
-    
 
 if __name__ == "__main__":
-    DailyReportFactory().getReport()
+    argParser = argparse.ArgumentParser()
+    argParser.add_argument("--from", help = u"from date, can be date or days like \"-1\"", default = u"-1")
+    argParser.add_argument("--to", help = u"to date", default = u"yestoday")
+    args = argParser.parse_args()
+    if args.to == u'yestoday':
+        endDate = date.today() - timedelta(days = 1)
+    try:
+        daySpan = timedelta(days = int(getattr(args, 'from')))
+        beginDate = endDate - daySpan
+    except Exception, e:
+        beginDate = endDate - timedelta(days = 1)
+        pass
+    DailyReportFactory().getReport(beginDate = endDate, endDate = beginDate)

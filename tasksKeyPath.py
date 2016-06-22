@@ -13,6 +13,7 @@ from datetime import datetime
 from uuid import uuid4
 from task import TaskInfoFactory
 from dottable import Table, Row
+import settings
 
 tf = TaskInfoFactory(fab = getFab())
 
@@ -52,10 +53,11 @@ def getTaskKickoffTime(t):
     return tf.kickoffDate(int(t['id']))
 
 def titleRowRenderer(task, table):
-    rowTemplate = u"""<TD{stateColor}></TD><TD{colspan}>{title}</TD>"""
+    rowTemplate = u"""<TD{stateColor}></TD><TD{colspan}{taskLink}>{title}</TD>"""
     stateColor = u""
     colspan = u""
     title = u""
+    tasklink = u' HREF="{url}T{tid}"'.format(url = settings.SITE['URL'], tid = task['id'])
     #state color
     maxColCount = reduce(lambda x, y: max(x, y.colCount()), table.rows, 2)
     colspan = u' COLSPAN="%d"' % (maxColCount, )
@@ -78,7 +80,7 @@ def titleRowRenderer(task, table):
     stateColor += u' ROWSPAN="%d"' % len(table.rows)
     titleDetalTemplate = ur'<FONT FACE="微软雅黑"{titleColor}>{titleDetail}</FONT>'
     title = titleDetalTemplate.format(titleColor = titleColor, titleDetail = titleDetail)
-    return rowTemplate.format(stateColor = stateColor, title = title, colspan = colspan)
+    return rowTemplate.format(stateColor = stateColor, title = title, colspan = colspan, taskLink = tasklink)
 
 def ownerRowRenderer(task, table):
     owner = getTaskOwner(task)

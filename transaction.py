@@ -50,6 +50,8 @@ kTransactionTypeViewPolicy = 'core:view-policy'
 kTransactionTypeCreate = 'core:create'
 kTransactionTypeUnblock = 'unblock'
 kTransactionTypeComment = 'core:comment'
+kTransactionTypeCustomfield = 'core:customfield'
+kTransactionTypeColumn = 'core:columns'
 kTransactionTypeDescription = 'description'
 kTransactionTypeEdge = 'core:edge'
 kTransactionTypePriority = 'priority'
@@ -171,3 +173,14 @@ def formatCreateTransactionToText(fab, transaction):
     oldVal = transaction['oldValue']
     newVal = transaction['newValue']
     return u"修改任务描述：%s => %s" % (oldVal, newVal) 
+
+@transactionFormatter(kTransactionTypeColumn, "text")
+def formatColumnTransactionToText(fab, transaction):
+    newVal = transaction['newValue'][0]
+    columnPHID = newVal[u"columnPHID"]
+    colInfo = fab.phid.query(phids=[columnPHID]).response
+    return u"将任务移动到“%s”列" % colInfo.values()[0]['fullName']
+
+@transactionFormatter(kTransactionTypeCustomfield, "text")
+def formatCustomFieldTransactionToText(fab, transaction):
+    return u"修改自定义属性"
