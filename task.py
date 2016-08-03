@@ -36,6 +36,18 @@ class TaskInfoFactory(object):
             return u"TBD"
         return datetime.fromtimestamp(deadline).strftime("%Y年%m月%d日 %H:%M").decode('utf-8')
 
+    def author(self, tid):
+        tif = self.info(tid)
+        ui = UserInfo()
+        ownerPHID = tif['authorPHID']
+        if None == ownerPHID:
+            return u""
+        ret = ui.getUsersRealName([ownerPHID])
+        if len(ret) == 0:
+            return u""
+        return ret[0]
+        return 
+
     def deadlineTimestemp(self, tid):
         t = self.info(tid)
         aux = t["auxiliary"]
@@ -46,7 +58,23 @@ class TaskInfoFactory(object):
         t = self.info(tid)
         aux = t["auxiliary"]
         kickoff = aux["std:maniphest:" + settings.CUSTOM_FIELD_KEYS['plans-to-kickoff']]
+        if None == kickoff:
+            return u"TBD"
         return datetime.fromtimestamp(kickoff)
+
+
+    def lastModified(self, tid):
+        t = self.info(tid)
+        return datetime.fromtimestamp(float(t['dateModified']))
+
+    def isClosed(self, tid):
+        t = self.info(tid)
+        return t['isClosed']
+
+    def status(self, tid):
+        t = self.info(tid)
+        return t['status']
+        
 
     def points(self, tid):
         try:
@@ -56,6 +84,8 @@ class TaskInfoFactory(object):
             fab = self.fab
             resp = fab.maniphest.search(queryKey=None, constraints={'ids':[int(tid)]}).response
             ret = resp['data'][0]['fields']['points']
+            if None == ret:
+                ret = ""
             if tid in self.cachedTasks:
                 self.cachedTasks[tid]['points'] = ret
             return ret
@@ -65,8 +95,15 @@ class TaskInfoFactory(object):
     def precedings(self, tid):
         tif = self.info(tid)
         dependPhids = tif['dependsOnTaskPHIDs']
+        if len(dependPhids) == 0:
+            return []
         return self.infoFromPHIDs(dependPhids)
         pass
+
+    def precedingTitles(self, tid):
+        infos = self.precedings(tid)
+        titles = map(lambda x: self.longTitle(x['id']), infos)
+        return titles
 
     def infoFromPHID(self, phid):
         return self.infoFromPHIDs([phid])
