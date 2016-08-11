@@ -87,6 +87,7 @@ if __name__ == "__main__":
     if args.to == u'yestoday':
         endDate = date.today() - timedelta(days = 1)
     try:
+        endDate = datetime.strptime(args.to, '%Y-%m-%d').date()
         daySpan = timedelta(days = int(getattr(args, 'from')))
         beginDate = endDate - daySpan
     except Exception, e:
