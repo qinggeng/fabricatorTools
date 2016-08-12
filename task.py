@@ -74,6 +74,10 @@ class TaskInfoFactory(object):
     def status(self, tid):
         t = self.info(tid)
         return t['status']
+
+    def priority(self, tid):
+        t = self.info(tid)
+        return t['priority']
         
 
     def points(self, tid):
