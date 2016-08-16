@@ -19,11 +19,14 @@ fab = getFab()
 users = getUsers(fab)
 tf = TaskInfoFactory(fab = fab)
 reportDate = datetime.now()
+
+def getRemainsTime(tid):
+    return tf.remainsTimeDesription(tid, datetime.now())
 columns = [
     (u'标题', tf.longTitle),
     (u'负责人', tf.owner),
     (u'截止时间', tf.deadline),
-#    (u'剩余时间', tf.remainsTime),
+    (u'剩余时间', getRemainsTime),
     (u'状态', tf.status),
     (u'优先级', tf.priority),
     (u'预估工时', tf.points),

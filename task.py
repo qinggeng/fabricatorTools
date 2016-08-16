@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 from fab import getFab
 from user import UserInfo
-from datetime import datetime
+#from datetime import datetime
+from datetime import datetime, date, time, timedelta
 import settings
 class TaskInfoFactory(object):
     def __init__(self, **kwargs):
@@ -131,6 +132,32 @@ class TaskInfoFactory(object):
         if len(ret) == 0:
             return u""
         return ret[0]
+
+    def remainsTimeDesription(self, tid, refTime):
+        try:
+            dt = self.deadlineTimestemp(tid)
+            print 'get dt'
+            deadTime = datetime.fromtimestamp(dt)
+            print 'get dtd'
+            remains = deadTime - refTime
+            print 'get remains'
+            if remains.total_seconds() > 24 * 60 * 60:
+                remainsStr = u'剩余%d天' % (remains.days,)
+            elif remains.total_seconds() > 60 * 60:
+                hours = remains.seconds / 3600
+                minutes = (remains.seconds % 3600) / 60
+                remainsStr = u"剩余%d小时%d分" % (hours, minutes)
+            elif remains.total_seconds() <= 0:
+                totalSeconds = -int(remains.total_seconds())
+                days = totalSeconds / 86400
+                hours = totalSeconds / 3600 - days * 24
+                minutes = (totalSeconds % 3600) / 60
+                remainsStr = ur'超期%d天%d小时%d分' % (days, hours, minutes)
+            return remainsStr
+            pass
+        except Exception, e:
+            pass
+        return u''
 
 class TaskTableFactory(object):
     def __init__(self, taskInfo, **kwargs):

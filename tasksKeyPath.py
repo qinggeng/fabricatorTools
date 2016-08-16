@@ -169,6 +169,7 @@ Banner().addLine('Start Genearte Key Paths').output()
 argsParser = argparse.ArgumentParser()
 argsParser.add_argument("--tasks", help = u"root tasks", required = True)
 argsParser.add_argument("--output", help = u"output svg file path", required = True)
+argsParser.add_argument("--title", help = u"graph title", default = "")
 if len(sys.argv) > 1:
     args = argsParser.parse_args()
 else:
@@ -182,7 +183,7 @@ fab = getFab()
 
 g = nx.DiGraph()
 #Error: Layout type: "neat" not recognized. Use one of: circo dot fdp neato nop nop1 nop2 osage patchwork sfdp twopi
-g.graph['graph'] = {'remincross': 'true', 'rankdir':'LR', 'splines':'ortho', 'layout': 'dot', 'nodesep': '0.5', 'label': u'TSK原型图', 'font-family':u'微软雅黑'}
+g.graph['graph'] = {'remincross': 'true', 'rankdir':'LR', 'splines':'ortho', 'layout': 'dot', 'nodesep': '0.5', 'label': args.title.decode('utf-8'), 'font-family':u'微软雅黑'}
 graphMaker = partial(drawDependGraph, g)
 
 users = getUsers(fab)
