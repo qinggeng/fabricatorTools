@@ -45,9 +45,17 @@ for column, col in zip(columns, range(len(columns))):
     ws.write(0, col, column[0], titleFormat)
 
 summarize = [];
+def isDisabled(user):
+    try:
+        user['roles'].index('disabled')
+        return True
+    except Exception, e:
+        return False
+
 with CacheUsers(users) as cu:
-    for user in users:
+    for user in filter(lambda x: False == isDisabled(x), users):
         print user['realName']
+        print user['roles']
         tasks = getUserTasks(fab, user)
         tasks = filter(lambda x: x['isClosed'] != True, tasks)
         summarize.append(u"{name}手上有{c}个task".format(name = user['realName'], c = len(tasks)))
@@ -55,7 +63,6 @@ with CacheUsers(users) as cu:
             #print 'T' + task['id']
             for column, col in zip(columns, range(len(columns))):
                 func = column[1]
-                #print column[0], ',',
                 ws.write(row, col, func(int(task['id'])))
             row += 1
     summarize.append(u'报告生成时间:{rt}'.format(rt = reportDate.strftime("%Y年%m月%d日 %H:%M").decode('utf-8')))

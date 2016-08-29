@@ -133,14 +133,21 @@ class TaskInfoFactory(object):
             return u""
         return ret[0]
 
+    def isOverdue(self, tid, refTime):
+        try:
+            dt = self.deadlineTimestemp(tid)
+            deadTime = datetime.fromtimestamp(dt)
+            remains = deadTime - refTime
+            return remains.total_seconds() <= 0
+        except Exception, e:
+            pass
+        return False
+
     def remainsTimeDesription(self, tid, refTime):
         try:
             dt = self.deadlineTimestemp(tid)
-            print 'get dt'
             deadTime = datetime.fromtimestamp(dt)
-            print 'get dtd'
             remains = deadTime - refTime
-            print 'get remains'
             if remains.total_seconds() > 24 * 60 * 60:
                 remainsStr = u'剩余%d天' % (remains.days,)
             elif remains.total_seconds() > 60 * 60:
