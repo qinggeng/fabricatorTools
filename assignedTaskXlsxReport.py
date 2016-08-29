@@ -53,14 +53,13 @@ def isDisabled(user):
         return False
 
 with CacheUsers(users) as cu:
-    for user in filter(lambda x: False == isDisabled(x), users):
+    ui =UserInfo()
+    for user in filter(lambda x: False == isDisabled(x), ui.orderedUsers()):
         print user['realName']
-        print user['roles']
         tasks = getUserTasks(fab, user)
         tasks = filter(lambda x: x['isClosed'] != True, tasks)
         summarize.append(u"{name}手上有{c}个task".format(name = user['realName'], c = len(tasks)))
         for task in tasks:
-            #print 'T' + task['id']
             for column, col in zip(columns, range(len(columns))):
                 func = column[1]
                 ws.write(row, col, func(int(task['id'])))

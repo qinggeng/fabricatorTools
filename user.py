@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import fab
+import fab, settings
 from fab import Singleton, getUsers, getFab
 
 class CachedUserInfo(object):
@@ -19,6 +19,24 @@ class CachedUserInfo(object):
 
     def allUserIds(self):
         return self.users.keys()
+
+    def orderedUsers(self, 
+            field = settings.USER_ORDER_FIELD, 
+            orders = settings.USER_ORDERS):
+        keys = map(lambda x: x[field], orders)
+        ret = []
+        unordered = self.users.values()[:]
+        for key in keys:
+            for user in self.users.values():
+                if user[field] == key:
+                    ret.append(user)
+                    try:
+                        index = unordered.index(user)
+                        unordered.pop(index)
+                    except Exception, e:
+                        pass
+        return ret + unordered
+        
 
 class CacheUsers(object):
     def __init__(self, users):
@@ -43,6 +61,7 @@ class CacheUsers(object):
         self.ui.getUsersField = self.cui.getUsersField
         self.ui.allUserIds = self.cui.allUserIds
         self.ui.getUsersRealName = self.cui.getUsersRealName
+        self.ui.orderedUsers = self.cui.orderedUsers
 
     def __exit__(self, d1, d2, d3):
         try:
@@ -68,4 +87,6 @@ if __name__ == '__main__':
     users = getUsers(fab)
     with CacheUsers(users) as cu:
         ui = UserInfo()
+        for u in ui.orderedUsers():
+            print u['realName']
         print ui.getUsersRealName(ui.allUserIds())
