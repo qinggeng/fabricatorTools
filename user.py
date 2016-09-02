@@ -20,6 +20,12 @@ class CachedUserInfo(object):
     def allUserIds(self):
         return self.users.keys()
 
+    def getUserByRealName(self, realName):
+        ret = filter(lambda x: x['realName'] == realName, self.users.values())
+        if len(ret) != 1:
+            raise Exception(u"not found or same real name for '{n}'".format(n = realName))
+        return ret[0]
+
     def orderedUsers(self, 
             field = settings.USER_ORDER_FIELD, 
             orders = settings.USER_ORDERS):
@@ -61,6 +67,7 @@ class CacheUsers(object):
         self.ui.getUsersField = self.cui.getUsersField
         self.ui.allUserIds = self.cui.allUserIds
         self.ui.getUsersRealName = self.cui.getUsersRealName
+        self.ui.getUserByRealName = self.cui.getUserByRealName
         self.ui.orderedUsers = self.cui.orderedUsers
 
     def __exit__(self, d1, d2, d3):

@@ -3,7 +3,11 @@ from fab import getFab
 from user import UserInfo
 #from datetime import datetime
 from datetime import datetime, date, time, timedelta
+from project import ProjectInfoFactory
+from userMock import FabMock
 import settings
+import json
+import requests
 class TaskInfoFactory(object):
     def __init__(self, **kwargs):
         fab = kwargs.pop('fab', getFab())
@@ -169,6 +173,75 @@ class TaskInfoFactory(object):
 class TaskTableFactory(object):
     def __init__(self, taskInfo, **kwargs):
         self.fab = kwargs.pop('fab', getFab())
+
+class TaskWriter(object):
+    def __init__(self, taskInfo, **kwargs):
+        self.fab = kwargs.pop('fab', getFab())
+        self.phid = kwargs.pop('phid')
+
+def newTask(fab, **args):
+    title = args.pop('task')
+    description = args.pop('description', u"")
+    priority = args.pop('priority', u"Needs Triage")
+    status = args.pop('status', u"Open")
+    owner = args.pop('assigned', u"")
+    projectsStr = unicode(args.pop('tags', u""))
+    projectNames = map(lambda x: x.strip(), projectsStr.split(','))
+    pif = ProjectInfoFactory()
+    projects = pif.projectsByName(projectNames)
+    projectPHIDs = map(lambda x: x['phid'], projects)
+    if len(projectPHIDs) == 0:
+        projectPhids = None
+    parent = args.pop('parent')
+    try:
+        if len(parent) > 0:
+            parent = int(parent[1:])
+            ti = TaskInfoFactory()
+            parent = ti.info(parent)
+            parent = parent['phid']
+    except Exception, e:
+        print e
+        parent = None
+        pass
+    theTask = fab.maniphest.createtask(
+            title = title,
+            description = description,
+            projectPHIDs = projectPHIDs)
+    taskId = theTask['id']
+    ui = UserInfo()
+    try:
+        ownerPhid = ui.getUserByRealName(owner)['phid']
+    except Exception, e:
+        ownerPhid = None
+    theTask = fab.maniphest.update(
+        id = taskId,
+        priority = settings.PRIORITY_VALUES[priority],
+        status = settings.STATUS_NAMES[status],
+        ownerPHID = ownerPhid)
+    if None != parent:
+        mock = FabMock()
+        session = requests.Session()
+        mock = FabMock()
+        resp = session.get(settings.SITE['URL'])
+        csrfToken = mock.getCsrfValue(resp.text)
+        resp = mock.login(
+                settings.USER['username'], 
+                settings.USER['password'], 
+                csrfToken, session)
+        csrfToken = mock.getCsrfValue(resp.text)
+        resp = mock.addTaskParent(theTask['phid'], parent, csrfToken, session)
+#    transactions = []
+#    if None != parent:
+#        transaction = {'type': 'parent', 'value': parent}
+#        transactions.append(transaction)
+#    if len(transactions) > 0:
+#        transactions = json.dumps(transactions)
+#        print transactions
+#        print fab.maniphest.edit(
+#            transactions = transactions,
+#            objectIdentifier = theTask['objectName'])
+    return theTask
+
 
 if __name__ == '__main__':
     from pprint import pprint as ppr
