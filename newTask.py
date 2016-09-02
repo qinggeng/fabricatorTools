@@ -6,7 +6,8 @@ import json
 from prettyprint import pp
 from settings import PRIORITY_VALUES, STATUS_NAMES
 import sys
-tasksJson = 'tasks.json'
+tasksJson = '/Users/hyk/workspace/workbench/2016-09-02/tasks.json'
+
 if len(sys.argv) > 1:
     tasksJson = sys.argv[1]
 newTasks = json.load(open(tasksJson, 'r'))

@@ -5,6 +5,7 @@ from user import UserInfo
 from datetime import datetime, date, time, timedelta
 from project import ProjectInfoFactory
 from userMock import FabMock
+from time import mktime
 import settings
 import json
 import requests
@@ -186,6 +187,9 @@ def newTask(fab, **args):
     status = args.pop('status', u"Open")
     owner = args.pop('assigned', u"")
     projectsStr = unicode(args.pop('tags', u""))
+    deadline = args.pop('deadline')
+    kickoff = args.pop('kickoff')
+
     projectNames = map(lambda x: x.strip(), projectsStr.split(','))
     pif = ProjectInfoFactory()
     projects = pif.projectsByName(projectNames)
@@ -203,10 +207,23 @@ def newTask(fab, **args):
         print e
         parent = None
         pass
+    auxDict = {}
+
+    if None != deadline:
+        deadline = mktime(datetime.strptime(deadline, '%Y-%m-%d %H:%M:%S').timetuple())
+        deadlineFieldName = "std:maniphest:" + settings.CUSTOM_FIELD_KEYS['deadline']
+        auxDict[deadlineFieldName] = deadline
+
+    if None != kickoff:
+        kickoff = mktime(datetime.strptime(kickoff, '%Y-%m-%d %H:%M:%S').timetuple())
+        kickoffFieldName = "std:maniphest:" + settings.CUSTOM_FIELD_KEYS['plans-to-kickoff']
+        auxDict[kickoffFieldName] = kickoff
+
     theTask = fab.maniphest.createtask(
             title = title,
             description = description,
-            projectPHIDs = projectPHIDs)
+            projectPHIDs = projectPHIDs,
+            auxiliary = auxDict)
     taskId = theTask['id']
     ui = UserInfo()
     try:
