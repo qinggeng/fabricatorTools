@@ -22,6 +22,7 @@ reportDate = datetime.now()
 
 def getRemainsTime(tid):
     return tf.remainsTimeDesription(tid, datetime.now())
+
 columns = [
     (u'标题', tf.longTitle),
     (u'负责人', tf.owner),
@@ -31,6 +32,7 @@ columns = [
     (u'优先级', tf.priority),
     (u'预估工时', tf.points),
     (u"发起人", tf.author),
+    (u"最后编辑时间", tf.lastModifiedStr),
 ]
 wb = xw.Workbook(args.o)
 ws = wb.add_worksheet()

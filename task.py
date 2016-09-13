@@ -9,6 +9,7 @@ from time import mktime
 import settings
 import json
 import requests
+kOutputDateTimeFormat = "%Y年%m月%d日 %H:%M"
 class TaskInfoFactory(object):
     def __init__(self, **kwargs):
         fab = kwargs.pop('fab', getFab())
@@ -40,7 +41,7 @@ class TaskInfoFactory(object):
         deadline = aux["std:maniphest:" + settings.CUSTOM_FIELD_KEYS['deadline']]
         if None == deadline:
             return u"TBD"
-        return datetime.fromtimestamp(deadline).strftime("%Y年%m月%d日 %H:%M").decode('utf-8')
+        return datetime.fromtimestamp(deadline).strftime(kOutputDateTimeFormat).decode('utf-8')
 
     def author(self, tid):
         tif = self.info(tid)
@@ -72,6 +73,9 @@ class TaskInfoFactory(object):
     def lastModified(self, tid):
         t = self.info(tid)
         return datetime.fromtimestamp(float(t['dateModified']))
+
+    def lastModifiedStr(self, tid):
+        return self.lastModified(tid).strftime(kOutputDateTimeFormat).decode('UTF-8')
 
     def isClosed(self, tid):
         t = self.info(tid)
@@ -209,12 +213,12 @@ def newTask(fab, **args):
         pass
     auxDict = {}
 
-    if None != deadline:
+    if None != deadline and len(deadline.strip()) > 0:
         deadline = mktime(datetime.strptime(deadline, '%Y-%m-%d %H:%M:%S').timetuple())
         deadlineFieldName = "std:maniphest:" + settings.CUSTOM_FIELD_KEYS['deadline']
         auxDict[deadlineFieldName] = deadline
 
-    if None != kickoff:
+    if None != kickoff and len(kickoff.strip()) > 0:
         kickoff = mktime(datetime.strptime(kickoff, '%Y-%m-%d %H:%M:%S').timetuple())
         kickoffFieldName = "std:maniphest:" + settings.CUSTOM_FIELD_KEYS['plans-to-kickoff']
         auxDict[kickoffFieldName] = kickoff
@@ -235,6 +239,7 @@ def newTask(fab, **args):
         priority = settings.PRIORITY_VALUES[priority],
         status = settings.STATUS_NAMES[status],
         ownerPHID = ownerPhid)
+    print parent
     if None != parent:
         mock = FabMock()
         session = requests.Session()
