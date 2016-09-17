@@ -9,6 +9,7 @@ from time import mktime
 import settings
 import json
 import requests
+# 这个放到设定项里面去
 kOutputDateTimeFormat = "%Y年%m月%d日 %H:%M"
 class TaskInfoFactory(object):
     def __init__(self, **kwargs):
@@ -184,6 +185,24 @@ class TaskWriter(object):
         self.fab = kwargs.pop('fab', getFab())
         self.phid = kwargs.pop('phid')
 
+def addParent(fab, tid, pid):
+    ti = TaskInfoFactory()
+    parent = ti.info(pid)
+    parent = parent['phid']
+    theTask = ti.info(tid)
+    mock = FabMock()
+    session = requests.Session()
+    mock = FabMock()
+    resp = session.get(settings.SITE['URL'])
+    csrfToken = mock.getCsrfValue(resp.text)
+    resp = mock.login(
+            settings.USER['username'], 
+            settings.USER['password'], 
+            csrfToken, session)
+    csrfToken = mock.getCsrfValue(resp.text)
+    resp = mock.addTaskParent(theTask['phid'], parent, csrfToken, session)
+
+
 def newTask(fab, **args):
     title = args.pop('task')
     description = args.pop('description', u"")
@@ -193,11 +212,13 @@ def newTask(fab, **args):
     projectsStr = unicode(args.pop('tags', u""))
     deadline = args.pop('deadline')
     kickoff = args.pop('kickoff')
+    points = args.pop('points')
 
     projectNames = map(lambda x: x.strip(), projectsStr.split(','))
     pif = ProjectInfoFactory()
     projects = pif.projectsByName(projectNames)
     projectPHIDs = map(lambda x: x['phid'], projects)
+    
     if len(projectPHIDs) == 0:
         projectPhids = None
     parent = args.pop('parent')
@@ -208,7 +229,7 @@ def newTask(fab, **args):
             parent = ti.info(parent)
             parent = parent['phid']
     except Exception, e:
-        print e
+        #print e
         parent = None
         pass
     auxDict = {}
@@ -239,7 +260,6 @@ def newTask(fab, **args):
         priority = settings.PRIORITY_VALUES[priority],
         status = settings.STATUS_NAMES[status],
         ownerPHID = ownerPhid)
-    print parent
     if None != parent:
         mock = FabMock()
         session = requests.Session()
@@ -252,16 +272,20 @@ def newTask(fab, **args):
                 csrfToken, session)
         csrfToken = mock.getCsrfValue(resp.text)
         resp = mock.addTaskParent(theTask['phid'], parent, csrfToken, session)
-#    transactions = []
+    transactions = []
+    try:
+        if None != points and len(points.strip()) > 0:
+            transaction = {'type':'points', 'value':str(points)}
+            transactions.append(transaction)
+    except Exception, e:
+        pass
 #    if None != parent:
 #        transaction = {'type': 'parent', 'value': parent}
 #        transactions.append(transaction)
-#    if len(transactions) > 0:
-#        transactions = json.dumps(transactions)
-#        print transactions
-#        print fab.maniphest.edit(
-#            transactions = transactions,
-#            objectIdentifier = theTask['objectName'])
+    if len(transactions) > 0:
+        fab.maniphest.edit(
+            transactions = transactions,
+            objectIdentifier = theTask['objectName'])
     return theTask
 
 
