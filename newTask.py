@@ -15,7 +15,7 @@ newTasks = json.load(open(tasksJson, 'r'))
 fab = getFab()
 users = getUsers(fab)
 with CacheUsers(users) as cu:
-    for newTaskRequest in newTasks:
+    for newTaskRequest in filter(lambda x: len(x['tid']) == 0, newTasks):
         ret = newTask(fab, **newTaskRequest)
         print ret
 quit()
