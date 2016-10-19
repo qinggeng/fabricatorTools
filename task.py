@@ -9,8 +9,9 @@ from time import mktime
 import settings
 import json
 import requests
+from prettyprint import pp
 # 这个放到设定项里面去
-kOutputDateTimeFormat = "%Y年%m月%d日 %H:%M"
+kOutputDateTimeFormat = "%Y-%m-%d %H:%M"
 class TaskInfoFactory(object):
     def __init__(self, **kwargs):
         fab = kwargs.pop('fab', getFab())
@@ -68,7 +69,7 @@ class TaskInfoFactory(object):
         kickoff = aux["std:maniphest:" + settings.CUSTOM_FIELD_KEYS['plans-to-kickoff']]
         if None == kickoff:
             return u"TBD"
-        return datetime.fromtimestamp(kickoff)
+        return datetime.fromtimestamp(kickoff).strftime(kOutputDateTimeFormat).decode('utf-8')
 
 
     def lastModified(self, tid):
@@ -287,6 +288,70 @@ def newTask(fab, **args):
             transactions = transactions,
             objectIdentifier = theTask['objectName'])
     return theTask
+
+def updateTask(fab, **args):
+    # 获取 tid
+    tid = args.pop('tid')
+    if None == tid:
+        print 'empty tid'
+        return
+
+    title = args.pop('task')
+    description = args.pop('description', u"")
+    priority = args.pop('priority', u"Needs Triage")
+    status = args.pop('status', u"Open")
+    owner = args.pop('assigned', u"")
+    projectsStr = unicode(args.pop('tags', u""))
+    deadline = args.pop('deadline')
+    kickoff = args.pop('kickoff')
+    points = args.pop('points')
+
+    projectNames = map(lambda x: x.strip(), projectsStr.split(','))
+
+    tid = int(tid[1:])
+    tf = TaskInfoFactory()
+    tif = tf.info(tid)
+    if tif == None:
+        print 'invalid task {tid}'.format(tid = tid)
+
+    pif = ProjectInfoFactory()
+    projects = pif.projectsByName(projectNames)
+    projectPHIDs = map(lambda x: x['phid'], projects)
+
+    ui = UserInfo()
+    ownerPhid = ui.getUserByRealName(owner)['phid']
+
+    updateArgs = {}
+    if title != tif['title']:
+        updateArgs['title'] = title
+    if description != tif['description']:
+        updateArgs['description'] = description
+    if ownerPhid != tif['ownerPHID']:
+        updateArgs['ownerPHID'] = ownerPhid
+    if priority != tif['priority']:
+        updateArgs['priority'] = settings.PRIORITY_VALUES[priority]
+    # TODO 更新 project
+    if status != tif['statusName']:
+        updateArgs['status'] = setting.STATUS_NAMES[status]
+    oldDeadline = tf.deadline(tid)
+    oldKickoff = tf.kickoffDate(tid)
+    auxDict = {}
+    if None != deadline and len(deadline.strip()) > 0 and deadline.strip() != oldDeadline:
+        deadline = mktime(datetime.strptime(deadline, '%Y-%m-%d %H:%M:%S').timetuple())
+        deadlineFieldName = "std:maniphest:" + settings.CUSTOM_FIELD_KEYS['deadline']
+        auxDict[deadlineFieldName] = deadline
+
+    if None != kickoff and len(kickoff.strip()) > 0 and kickoff.strip() != oldKickoff:
+        kickoff = mktime(datetime.strptime(kickoff, '%Y-%m-%d %H:%M:%S').timetuple())
+        kickoffFieldName = "std:maniphest:" + settings.CUSTOM_FIELD_KEYS['plans-to-kickoff']
+        auxDict[kickoffFieldName] = kickoff
+    if len(auxDict) > 0:
+        updateArgs['auxiliary'] = auxDict
+    if len(updateArgs) > 0:
+        pp(updateArgs)
+        fab.maniphest.update(id = str(tid), **updateArgs)
+    pass
+
 
 
 if __name__ == '__main__':
