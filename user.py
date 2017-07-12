@@ -26,6 +26,13 @@ class CachedUserInfo(object):
             raise Exception(u"not found or same real name for '{n}'".format(n = realName))
         return ret[0]
 
+    def phid2realname(self, phid):
+      try:
+        return self.users[phid]['realName']
+      except Exception, e:
+        print e
+        return "Anno"
+
     def orderedUsers(self, 
             field = settings.USER_ORDER_FIELD, 
             orders = settings.USER_ORDERS):
@@ -47,7 +54,7 @@ class CachedUserInfo(object):
 class CacheUsers(object):
     def __init__(self, users):
         self.users = users
-        pass
+
     def __enter__(self):
         self.ui = UserInfo()
         try:
@@ -69,6 +76,7 @@ class CacheUsers(object):
         self.ui.getUsersRealName = self.cui.getUsersRealName
         self.ui.getUserByRealName = self.cui.getUserByRealName
         self.ui.orderedUsers = self.cui.orderedUsers
+        self.ui.phid2realname = self.cui.phid2realname
 
     def __exit__(self, d1, d2, d3):
         try:

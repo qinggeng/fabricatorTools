@@ -15,18 +15,10 @@ if len(sys.argv) > 1:
 newTasks = json.load(open(tasksJson, 'r'))
 fab = getFab()
 users = getUsers(fab)
-#with CacheUsers(users) as cu:
-#    tf = TaskInfoFactory()
-#    tif = tf.info(55)
-#    pp(tif)
-#    quit()
-#    for newTaskRequest in filter(lambda x: len(x['tid']) == 0, newTasks):
-#        ret = newTask(fab, **newTaskRequest)
-#        print ret
-
 with CacheUsers(users) as cu:
+    for newTaskRequest in filter(lambda x: len(x['tid']) == 0, newTasks):
+        ret = newTask(fab, **newTaskRequest)
     for updateTaskRequest in filter(lambda x: len(x['tid']) != 0, newTasks):
-#        pp(updateTaskRequest)
         updateTask(fab, **updateTaskRequest)
 quit()
 
