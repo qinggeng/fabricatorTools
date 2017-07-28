@@ -30,5 +30,5 @@ class ProjectInfoFactory(object):
 if __name__ == '__main__':
    pif = ProjectInfoFactory()
    from prettyprint import pp
-   pp(map(lambda x: x['name'], pif.allProjects()))
-   print pif.projectsByName([u"测试用项目"])
+   import json
+   print json.dumps(pif.allProjects(), ensure_ascii = False)

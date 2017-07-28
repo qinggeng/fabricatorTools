@@ -13,8 +13,9 @@ def exportJson(ids):
     for tid in ids:
         row = {
             'tid': tid,
-            #'parent': tf.parent(tid),
-            'parent': u", ".join(tf.precedingTIDs(tid)),
+            # 'parent': tf.parent(tid),
+            # 'parent': u", ".join(tf.precedingTIDs(tid)),
+            'parent': u", ".join(map(lambda x: 'T%d' % x['id'], tf.parentTasks(tid))),
             'task': tf.title(tid),
             'assigned': tf.owner(tid),
             'status': tf.status(tid),

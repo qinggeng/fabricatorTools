@@ -142,6 +142,24 @@ class TaskInfoFactory(object):
     tids = map(lambda x: 'T' + x['id'], infos)
     return tids
 
+  def subTasks(self, tid):
+    fab = self.fab
+    args = {
+      'constraints': {
+        'parentIDs': [tid],
+      },
+    }
+    return fab.maniphest.search(**args).response['data']
+
+  def parentTasks(self, tid):
+    fab = self.fab
+    args = {
+      'constraints': {
+        'subtaskIDs': [tid],
+      },
+    }
+    return fab.maniphest.search(**args).response['data']
+
   def precedingTitles(self, tid):
     infos = self.precedings(tid)
     titles = map(lambda x: self.longTitle(x['id']), infos)
@@ -265,7 +283,6 @@ def newTask(fab, **args):
       parent = ti.info(parent)
       parent = parent['phid']
   except Exception, e:
-    #print e
     parent = None
     pass
   auxDict = {}
@@ -328,26 +345,31 @@ def updateTask(fab, **args):
   # 获取 tid
   tid = args.pop('tid')
   if None == tid:
-    print 'empty tid'
     return
 
-  title = args.pop('task')
-  description = args.pop('description', u"")
-  priority = args.pop('priority', u"Needs Triage")
-  status = args.pop('status', u"Open")
-  owner = args.pop('assigned', u"")
-  projectsStr = unicode(args.pop('tags', u""))
-  deadline = args.pop('deadline')
-  kickoff = args.pop('kickoff')
-  points = args.pop('points')
+  title        = args.pop('task')
+  description  = args.pop('description', u"")
+  priority     = args.pop('priority', u"Needs Triage")
+  status       = args.pop('status', u"Open")
+  owner        = args.pop('assigned', u"")
+  projectsStr  = unicode(args.pop('tags', u""))
+  deadline     = args.pop('deadline').strip()
+  kickoff      = args.pop('kickoff')
+  points       = args.pop('points')
 
   projectNames = map(lambda x: x.strip(), projectsStr.split(','))
 
-  tid = int(tid[1:])
+  if tid[0] == 'T':
+    tid = int(tid[1:])
+  else:
+    tid = int(tid)
   tf = TaskInfoFactory()
   tif = tf.info(tid)
   if tif == None:
     print 'invalid task {tid}'.format(tid = tid)
+
+  if deadline == 'TBD':
+    deadline = ''
 
   pif = ProjectInfoFactory()
   projects = pif.projectsByName(projectNames)
@@ -357,6 +379,7 @@ def updateTask(fab, **args):
   ownerPhid = ui.getUserByRealName(owner)['phid']
 
   updateArgs = {}
+  editArgs = {'objectIdentifier': tif['phid'], 'transactions': []}
   if title != tif['title']:
     updateArgs['title'] = title
   if description != tif['description']:
@@ -365,13 +388,31 @@ def updateTask(fab, **args):
     updateArgs['ownerPHID'] = ownerPhid
   if priority != tif['priority']:
     updateArgs['priority'] = settings.PRIORITY_VALUES[priority]
-  # TODO 更新 project
+  # 更新 project
+  newProjects = set(projectPHIDs)
+  oldProjects = set(tif['projectPHIDs'])
+  # 整理要添加的project
+  addingProjects = list(newProjects - oldProjects)
+  # 整理要删除的project
+  removingProjects = list(oldProjects - newProjects)
+  if len(addingProjects) > 0:
+    editArgs['transactions'].append({'type': 'projects.add', 'value': addingProjects})
+  if len(removingProjects) > 0:
+    editArgs['transactions'].append({'type': 'projects.remove', 'value': removingProjects})
+    pass
+  if len(removingProjects) > 0:
+    pass
   if status != tif['statusName']:
-    updateArgs['status'] = setting.STATUS_NAMES[status]
+    try:
+      updateArgs['status'] = settings.STATUS_NAMES[status]
+    except Exception, e:
+      if status != tif['status']:
+        updateArgs['status'] = status
+      pass
   oldDeadline = tf.deadline(tid)
   oldKickoff = tf.kickoffDate(tid)
   auxDict = {}
-  if None != deadline and len(deadline.strip()) > 0 and deadline.strip() != oldDeadline:
+  if None != deadline and len(deadline.strip()) > 0 and deadline.strip() != 'TBD' and deadline.strip() != oldDeadline:
     deadline = mktime(datetime.strptime(deadline, '%Y-%m-%d %H:%M:%S').timetuple())
     deadlineFieldName = "std:maniphest:" + settings.CUSTOM_FIELD_KEYS['deadline']
     auxDict[deadlineFieldName] = deadline
@@ -383,8 +424,11 @@ def updateTask(fab, **args):
   if len(auxDict) > 0:
     updateArgs['auxiliary'] = auxDict
   if len(updateArgs) > 0:
-    pp(updateArgs)
+    # pp(updateArgs)
     fab.maniphest.update(id = str(tid), **updateArgs)
+  if len(editArgs['transactions']) > 0:
+    resp = fab.maniphest.edit(**editArgs)
+    print resp
   pass
 
 
