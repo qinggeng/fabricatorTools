@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+ENV = 'default'
 from fab import getFab
 from user import UserInfo
 #from datetime import datetime
@@ -10,6 +11,22 @@ import settings
 import json
 import requests
 from prettyprint import pp
+# 辅助函数
+def parseTime(datestr):
+  try:
+    return mktime(datetime.strptime(datestr, '%a, %d %b %Y %H:%M:%S %Z').timetuple())
+  except Exception, e:
+    pass
+  try:
+    return mktime(datetime.strptime(datestr, '%Y-%m-%d %H:%M:%S').timetuple())
+  except Exception, e:
+    pass
+  try:
+    return mktime(datetime.strptime(datestr, '%Y-%m-%d %H:%M').timetuple())
+  except Exception, e:
+    pass
+  return ""
+
 # 这个放到设定项里面去
 kOutputDateTimeFormat = "%Y-%m-%d %H:%M"
 class TaskInfoFactory(object):
@@ -263,19 +280,24 @@ def newTask(fab, **args):
   priority = args.pop('priority', u"Needs Triage")
   status = args.pop('status', u"Open")
   owner = args.pop('assigned', u"")
-  projectsStr = unicode(args.pop('tags', u""))
-  deadline = args.pop('deadline')
-  kickoff = args.pop('kickoff')
-  points = args.pop('points')
+  projectsStr = args.pop('tags', u"")
+  deadline = args.pop('deadline', None)
+  kickoff = args.pop('kickoff', None)
+  points = args.pop('points', None)
+  subTasks = args.pop('subTasks', [])
 
-  projectNames = map(lambda x: x.strip(), projectsStr.split(','))
+  if type(projectsStr) != type([]):
+    projectNames = map(lambda x: x.strip(), projectsStr.split(','))
+  else:
+    projectNames = projectsStr
   pif = ProjectInfoFactory()
   projects = pif.projectsByName(projectNames)
   projectPHIDs = map(lambda x: x['phid'], projects)
   
   if len(projectPHIDs) == 0:
     projectPhids = None
-  parent = args.pop('parent')
+  parent = args.pop('parent', None)
+  print 'raw parent:', parent
   try:
     if len(parent) > 0:
       parent = int(parent[1:])
@@ -283,19 +305,30 @@ def newTask(fab, **args):
       parent = ti.info(parent)
       parent = parent['phid']
   except Exception, e:
+    print 'exception on get parent phid:', e
     parent = None
     pass
   auxDict = {}
 
   if None != deadline and len(deadline.strip()) > 0:
-    deadline = mktime(datetime.strptime(deadline, '%Y-%m-%d %H:%M:%S').timetuple())
+    deadline = parseTime(deadline)
     deadlineFieldName = "std:maniphest:" + settings.CUSTOM_FIELD_KEYS['deadline']
     auxDict[deadlineFieldName] = deadline
 
   if None != kickoff and len(kickoff.strip()) > 0:
-    kickoff = mktime(datetime.strptime(kickoff, '%Y-%m-%d %H:%M:%S').timetuple())
+    try:
+      kickoff = mktime(datetime.strptime(kickoff, '%Y-%m-%d %H:%M:%S').timetuple())
+    except Exception, e:
+      kickoff = mktime(datetime.strptime(kickoff, '%Y-%m-%d %H:%M').timetuple())
     kickoffFieldName = "std:maniphest:" + settings.CUSTOM_FIELD_KEYS['plans-to-kickoff']
     auxDict[kickoffFieldName] = kickoff
+  # pp(dict(
+      # title = title,
+      # description = description,
+      # projectPHIDs = projectPHIDs,
+      # auxiliary = auxDict))
+  # return
+
 
   theTask = fab.maniphest.createtask(
       title = title,
@@ -332,13 +365,18 @@ def newTask(fab, **args):
       transactions.append(transaction)
   except Exception, e:
     pass
-#  if None != parent:
-#    transaction = {'type': 'parent', 'value': parent}
-#    transactions.append(transaction)
+  # if None != parent:
+    # transaction = {'type': 'parent', 'value': parent}
+    # transactions.append(transaction)
   if len(transactions) > 0:
+    print 'transactions:'
+    pp(transactions)
     fab.maniphest.edit(
       transactions = transactions,
       objectIdentifier = theTask['objectName'])
+  for subTask in subTasks:
+    subTask['parent'] = 'T%s' % (taskId,)
+    newTask(fab, **subTask)
   return theTask
 
 def updateTask(fab, **args):
@@ -413,12 +451,15 @@ def updateTask(fab, **args):
   oldKickoff = tf.kickoffDate(tid)
   auxDict = {}
   if None != deadline and len(deadline.strip()) > 0 and deadline.strip() != 'TBD' and deadline.strip() != oldDeadline:
-    deadline = mktime(datetime.strptime(deadline, '%Y-%m-%d %H:%M:%S').timetuple())
+    deadLine = parseTIme(deadLine)
     deadlineFieldName = "std:maniphest:" + settings.CUSTOM_FIELD_KEYS['deadline']
     auxDict[deadlineFieldName] = deadline
 
   if None != kickoff and len(kickoff.strip()) > 0 and kickoff.strip() != oldKickoff:
-    kickoff = mktime(datetime.strptime(kickoff, '%Y-%m-%d %H:%M:%S').timetuple())
+    try:
+      kickoff = mktime(datetime.strptime(kickoff, '%Y-%m-%d %H:%M:%S').timetuple())
+    except Exception, e:
+      kickoff = mktime(datetime.strptime(kickoff, '%Y-%m-%d %H:%M').timetuple())
     kickoffFieldName = "std:maniphest:" + settings.CUSTOM_FIELD_KEYS['plans-to-kickoff']
     auxDict[kickoffFieldName] = kickoff
   if len(auxDict) > 0:
