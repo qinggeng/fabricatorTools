@@ -30,8 +30,7 @@ class CachedUserInfo(object):
     try:
       return self.users[phid]['realName']
     except Exception, e:
-      print e
-      return "Anno"
+      return "Nobody"
 
   def orderedUsers(self, 
     field = settings.USER_ORDER_FIELD, 
